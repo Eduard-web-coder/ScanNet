@@ -1,5 +1,15 @@
 import socket
 import psutil
+from art import tprint
+from colorama import init
+from colorama import Fore, Back, Style
+import tqdm
+
+init()
+tprint("ScanNet")
+
+print(Back.RED + 'Github - https://github.com/Eduard-web-coder/ScanNet')
+print(Style.BRIGHT + '' + Style.RESET_ALL)
 
 # Функция для сканирования одного порта
 def scan_port(host, port):
@@ -14,10 +24,11 @@ def scan_port(host, port):
     except socket.error:
         return False
 
-# Функция для сканирования диапазона портов
+# Функция для сканирования диапазона портов с прогресс-баром
 def scan_ports(host, ports):
     open_ports = []
-    for port in ports:
+    print(f"Сканирование портов на {host}...")
+    for port in tqdm.tqdm(ports, desc="Сканирование"):
         if scan_port(host, port):
             open_ports.append(port)
     return open_ports
@@ -29,11 +40,11 @@ def check_vulnerabilities(host, open_ports):
         22: "SSH", 
         23: "Telnet", 
         25: "SMTP", 
-        3306: "MySQL",      # Порт MySQL
-        1433: "MSSQL",      # Порт MSSQL
-        3389: "RDP",        # Порт RDP
-        27017: "MongoDB",   # Порт MongoDB
-        6379: "Redis"       # Порт Redis
+        3306: "MySQL",      
+        1433: "MSSQL",      
+        3389: "RDP",        
+        27017: "MongoDB",   
+        6379: "Redis"       
     }
     vulnerable_ports = []
 
@@ -43,12 +54,20 @@ def check_vulnerabilities(host, open_ports):
 
     return vulnerable_ports
 
+# Получение локальных IP-адресов
+def get_local_ip():
+    ip_list = []
+    for interface, addrs in psutil.net_if_addrs().items():
+        for addr in addrs:
+            if addr.family == socket.AF_INET:
+                ip_list.append(addr.address)
+    return ip_list
 
 # Получение списка всех подключенных IP-адресов на ПК
 def get_connected_ips():
     connected_ips = []
     for conn in psutil.net_connections(kind='inet'):
-        if conn.status == 'ESTABLISHED':
+        if conn.status == 'ESTABLISHED' and conn.raddr:
             connected_ips.append(conn.raddr[0])
     return set(connected_ips)
 
@@ -95,10 +114,11 @@ def main():
         print("\nГлавное меню:")
         print("1. Проверка одного IP адреса вручную")
         print("2. Проверка всех подключенных IP адресов на ПК")
-        print("3. Просмотр информации о процессах")
-        print("4. Выход")
+        print("3. Проверка уязвимостей на текущем ПК")
+        print("4. Просмотр информации о процессах")
+        print("5. Выход")
         
-        command = input("Выберите команду (1/2/3/4): ")
+        command = input("Выберите команду (1/2/3/4/5): ")
 
         if command == '1':
             target_host = input("Введите IP адрес для проверки (например, 192.168.1.1): ")
@@ -142,6 +162,34 @@ def main():
                 print("Нет подключенных IP-адресов.")
         
         elif command == '3':
+            print("Проверка уязвимостей на текущем ПК...")
+            local_ips = get_local_ip()
+            if not local_ips:
+                print("Не удалось получить IP-адреса вашего ПК.")
+                continue
+
+            print("Ваши локальные IP-адреса:")
+            for ip in local_ips:
+                print(f"- {ip}")
+            
+            ports_to_scan = [21, 22, 23, 25, 80, 443, 3306, 1433, 3389, 27017, 6379]
+            for ip in local_ips:
+                print(f"\nСканирование IP-адреса: {ip}")
+                open_ports = scan_ports(ip, ports_to_scan)
+
+                if open_ports:
+                    print(f"Открытые порты: {open_ports}")
+                    vulnerabilities = check_vulnerabilities(ip, open_ports)
+                    if vulnerabilities:
+                        print("Обнаружены уязвимые порты:")
+                        for port, service in vulnerabilities:
+                            print(f" - Порт {port} ({service}) может быть уязвим.")
+                    else:
+                        print("Уязвимости не найдены.")
+                else:
+                    print("Открытые порты не найдены.")
+
+        elif command == '4':
             print("Просмотр информации о процессах...")
             print("1. Просмотр всех процессов")
             print("2. Получение информации о процессе по имени")
@@ -155,7 +203,7 @@ def main():
             else:
                 print("Некорректная команда. Попробуйте снова.")
         
-        elif command == '4':
+        elif command == '5':
             print("Выход из программы.")
             break
         
