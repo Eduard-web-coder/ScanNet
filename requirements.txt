@@ -1,0 +1,5 @@
+art==5.8
+colorama==0.4.4
+psutil==5.8.0
+pyfiglet==0.8.post1
+tqdm==4.62.3
